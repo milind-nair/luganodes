@@ -1,0 +1,36 @@
+# Use Ubuntu 20.04 as the base image
+FROM ubuntu:20.04
+
+# Set environment variables
+ENV DEBIAN_FRONTEND noninteractive
+
+# Update and install necessary packages
+RUN apt-get update && \
+    apt-get install -y build-essential cabal-install git libssl-dev libtinfo-dev libsystemd-dev zlib1g-dev make g++ curl libncursesw5 pkg-config libgmp-dev libsqlite3-dev libczmq-dev libsodium-dev
+
+# Install Haskell and Cabal
+# RUN apt-get install -y haskell-platform
+RUN curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
+
+# Set the working directory
+WORKDIR /cardano
+
+# Clone the cardano-node repository
+RUN git clone https://github.com/input-output-hk/cardano-node.git
+
+# Change into the cardano-node directory
+WORKDIR /cardano/cardano-node
+
+# Build cardano-node and cardano-cli
+RUN git fetch --all --tags && \
+    latestTag=$(git describe --tags $(git rev-list --tags --max-count=1)) 
+RUN git checkout $latestTag 
+RUN cabal --config-file="path/to/config"
+RUN  cabal new-build all
+
+# Set the entry point to the built binaries
+ENTRYPOINT ["cp", "-a", "/cardano/cardano-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/cardano-node-1.0.0/x/cardano-node/build/cardano-node/cardano-node", "/cardano/cardano-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/cardano-cli-1.0.0/x/cardano-cli/build/cardano-cli/cardano-cli", "/output/"]
+
+# Make the binaries executable
+RUN chmod +x /cardano/cardano-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/cardano-node-1.0.0/x/cardano-node/build/cardano-node/cardano-node && \
+    chmod +x /cardano/cardano-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/cardano-cli-1.0.0/x/cardano-cli/build/cardano-cli/cardano-cli
